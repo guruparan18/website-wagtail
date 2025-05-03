@@ -60,6 +60,8 @@ jobs:
         run: |
           cd infra
           . ./load-secrets.sh
+          echo "LOADED BASTION_HOST_IP: ${BASTION_HOST_IP}"
+          echo "LOADED DATABASE_HOSTNAME: ${DATABASE_HOSTNAME}"
           cd ..
           echo "DATABASE_PASSWORD=$DATABASE_PASSWORD" >> $GITHUB_ENV
           echo "::add-mask::${DATABASE_PASSWORD}"
