@@ -2,17 +2,14 @@
 # Output the public IP of the Bastion Host
 output "bastion_public_ip" {
   value = module.app.bastion_public_ip
-  sensitive = true
 }
 
 output "database_endpoint" {
   value = module.app.database_endpoint
-  sensitive = true
 }
 
 output "lb_url" {
   value = module.app.lb_url
-  sensitive = true
 }
 
 output "zone_id" {
