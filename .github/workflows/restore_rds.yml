@@ -90,12 +90,36 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          cd website
-          set -e
+          echo "Changing to website directory..."
+          cd website || { echo "Failed to cd into website"; exit 1; }
+          # set -e # Temporarily disable or keep it and rely on || {} blocks
 
-          ssh-keyscan -H ${BASTION_HOST_IP} > /tmp/known_hosts
-          ssh -o UserKnownHostsFile=/tmp/known_hosts -L 5432:${DATABASE_HOSTNAME} -N -i ../.ssh/id_rsa ubuntu@${BASTION_HOST_IP} &
+          echo "Bastion Host IP: ${BASTION_HOST_IP}"
+          echo "Database Hostname: ${DATABASE_HOSTNAME}"
+          echo "Scanning bastion host key..."
+          ssh-keyscan -H ${BASTION_HOST_IP} > /tmp/known_hosts || { echo "ssh-keyscan failed"; exit 1; }
+          echo "Host key scanned."
+
+          echo "Starting SSH tunnel..."
+          # Use -f to background properly after potential authentication
+          ssh -vvv -o StrictHostKeyChecking=no -o UserKnownHostsFile=/tmp/known_hosts -L 5432:${DATABASE_HOSTNAME}:5432 -f -N -i ../.ssh/id_rsa ubuntu@${BASTION_HOST_IP} || { echo "SSH command failed immediately"; exit 1; }
+          echo "SSH command executed. Waiting for tunnel..."
+          sleep 5 # Give tunnel a moment to establish or fail
+
+          # Optional: Test tunnel connection if you have netcat or psql client
+          # echo "Testing tunnel connection..."
+          # nc -zv localhost 5432 || { echo "Tunnel test connection failed (nc)"; exit 1; }
+
+          echo "Exporting DATABASE_URL..."
           export DATABASE_URL="postgresql://master:${DATABASE_PASSWORD}@localhost:5432/postgres"
-          echo "Running migrations..."
-          make migrate
-          make createpages settings="app.settings.${ENVIRONMENT}"
+          echo "DATABASE_URL set."
+
+          echo "Running make migrate..."
+          make migrate || { echo "make migrate FAILED"; exit 1; }
+          echo "make migrate completed."
+
+          echo "Running make createpages..."
+          make createpages settings="app.settings.${ENVIRONMENT}" || { echo "make createpages FAILED"; exit 1; }
+          echo "make createpages completed."
+
+          echo "Migration step finished successfully."
